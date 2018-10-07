@@ -59,21 +59,21 @@ class Model():
 
         with tf.variable_scope('rnn'):
             ##################
-            cell = tf.nn.rnn_cell.BasicLSTMCell(num_units=self.state_size, state_is_tuple=True)
+            cell = tf.nn.rnn_cell.BasicLSTMCell(num_units=self.dim_embedding, state_is_tuple=True)
             
             cell = tf.nn.rnn_cell.DropoutWrapper(cell=cell,
                                                  input_keep_prob=1.0,
                                                  output_keep_prob=self.keep_prob)
             cell = tf.nn.rnn_cell.MultiRNNCell([cell] * self.rnn_layers, state_is_tuple=True)
            
-            #依然是初始化一个[batch_size,state_size]的矩阵
+            #依然是初始化一个[batch_size,dim_embedding]的矩阵
             self.state_tensor = cell.zero_state(self.batch_size, dtype=tf.float32)
             """
             tf.nn.dynamic_runn的输出shape为(batch_size,num_steps,dim_embedding),其state
             的shape为(batch_size,dim_embedding)
             """
             rnn_outputs, self.outputs_state_tensor = tf.nn.dynamic_rnn(cell, 
-                                                              rnn_inputs, 
+                                                              data, 
                                                               initial_state=self.state_tensor)
             ##################
 
@@ -84,7 +84,7 @@ class Model():
             ##################
             W = tf.get_variable(
                 'W',
-                [self.state_size, self.num_words],     
+                [self.dim_embedding, self.num_words],     
                 initializer=tf.random_normal_initializer(stddev=0.01)
             )
             b = tf.get_variable(
@@ -98,7 +98,7 @@ class Model():
 
         self.predictions = tf.nn.softmax(logits, name='predictions')
 
-        loss = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.reshape(self.Y, [-1])
+        loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=tf.reshape(self.Y, [-1]))
         mean, var = tf.nn.moments(logits, -1)
         self.loss = tf.reduce_mean(loss)
         tf.summary.scalar('logits_loss', self.loss)
